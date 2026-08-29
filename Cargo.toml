@@ -1,0 +1,10 @@
+[package]
+name = "waver-dsp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Real-time Process trait and built-in DSP nodes."
+
+[dependencies]
+waver-core.workspace = true
