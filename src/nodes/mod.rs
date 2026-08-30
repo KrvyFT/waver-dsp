@@ -15,8 +15,9 @@ pub fn for_kind(kind: NodeKind) -> Option<Silence> {
         | NodeKind::Vca
         | NodeKind::Adsr
         | NodeKind::Lfo
-        | NodeKind::Mixer
-        | NodeKind::Output => None,
+        |         NodeKind::Mixer
+        | NodeKind::Output
+        | NodeKind::Delay => None,
     }
 }
 
