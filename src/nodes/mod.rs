@@ -1,21 +1,25 @@
 //! Built-in nodes. Only [`Silence`] exists in the skeleton.
 
 mod silence;
+mod vco;
 
 pub use silence::Silence;
+pub use vco::Vco;
 
 use waver_core::NodeKind;
 
+use crate::Process;
+
 /// Map an IR kind to a live processor. Compile-thread only (may allocate later).
-pub fn for_kind(kind: NodeKind) -> Option<Silence> {
+pub fn for_kind(kind: NodeKind) -> Option<Box<dyn Process>> {
     match kind {
-        NodeKind::Silence => Some(Silence),
-        NodeKind::Vco
-        | NodeKind::Vcf
+        NodeKind::Silence => Some(Box::new(Silence)),
+        NodeKind::Vco => Some(Box::new(Vco::new(440.0, 0.5, 0.0))),
+        NodeKind::Vcf
         | NodeKind::Vca
         | NodeKind::Adsr
         | NodeKind::Lfo
-        |         NodeKind::Mixer
+        | NodeKind::Mixer
         | NodeKind::Output
         | NodeKind::Delay => None,
     }
