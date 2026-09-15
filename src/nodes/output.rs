@@ -46,6 +46,10 @@ impl Process for Output {
         debug_assert!(input.len() >= n);
         self.master[..n].copy_from_slice(&input[..n]);
     }
+
+    fn master_slice(&self) -> Option<&[f32]> {
+        Some(Output::master_slice(self))
+    }
 }
 
 #[cfg(test)]

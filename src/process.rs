@@ -20,4 +20,9 @@ pub struct ProcessCtx<'a> {
 pub trait Process: Send {
     /// Render `ctx.block` frames.
     fn process(&mut self, ctx: &mut ProcessCtx<'_>);
+
+    /// Optional master bus for sink nodes (e.g. Output).
+    fn master_slice(&self) -> Option<&[f32]> {
+        None
+    }
 }
