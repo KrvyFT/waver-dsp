@@ -2,7 +2,7 @@
 
 use crate::{Process, ProcessCtx};
 
-/// Must match [`waver_engine::BLOCK`].
+/// Must match `waver_engine::BLOCK` (the engine depends on this crate).
 pub const MAX_BLOCK: usize = 64;
 
 /// Terminal node with one input and no graph outputs.

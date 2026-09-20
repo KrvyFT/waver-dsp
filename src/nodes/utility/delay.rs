@@ -1,8 +1,7 @@
 //! One-block delay line inserted by the compiler to break feedback loops.
 
+use crate::nodes::MAX_BLOCK;
 use crate::{Process, ProcessCtx};
-
-use super::output::MAX_BLOCK;
 
 /// Delays the input by exactly one processing block.
 pub struct Delay {

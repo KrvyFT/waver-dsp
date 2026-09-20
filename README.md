@@ -32,13 +32,20 @@ git clone https://github.com/KrvyFT/waver-dsp.git
 
 可独立推送；构建请走伞仓。见 [doc/repos.md](https://github.com/KrvyFT/waver/blob/master/doc/repos.md)。
 
+## 接口文档
+
+[通用 DSP 模块接口](docs/module-interface.md)：缓冲契约、参数与状态、工厂调用、模块实现示例、宿主限制和验证清单。示例随 rustdoc 测试执行。
+
 ## 内容概要
 
 | 项 | 说明 |
 |----|------|
 | `Process` / `ProcessCtx` | `process` 内禁止分配 / 锁 / IO |
 | `master_slice` | sink（如 Output）可选主总线 |
-| 内置节点 | `Vco`、`Output`、`Delay`、`Silence` |
+| 目录 | `nodes/oscillator`、`utility`、`io`（按 `ModuleFamily`） |
+| 内置节点 | `Vco`、`Noise`、`Output`、`Delay`、`Silence` |
 | `for_kind` | `NodeKind` → `Box<dyn Process>`；未实现 kind 返回 `None` |
+
+扩展类型 / 模块见伞仓 [doc/modules.md](https://github.com/KrvyFT/waver/blob/master/doc/modules.md)（Noise 为标准示范）。
 
 实时约定见 [doc/audio-thread.md](https://github.com/KrvyFT/waver/blob/master/doc/audio-thread.md)。
