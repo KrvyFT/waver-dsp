@@ -42,8 +42,8 @@ git clone https://github.com/KrvyFT/waver-dsp.git
 |----|------|
 | `Process` / `ProcessCtx` | `process` 内禁止分配 / 锁 / IO |
 | `master_slice` | sink（如 Output）可选主总线 |
-| 目录 | `nodes/oscillator`、`utility`、`io`（按 `ModuleFamily`） |
-| 内置节点 | `Vco`、`Noise`、`Output`、`Delay`、`Silence` |
+| 目录 | `nodes/oscillator`、`filter`、`utility`、`io`（按 `ModuleFamily`） |
+| 内置节点 | `Vco`、`Noise`、`Vcf`、`Output`、`Delay`、`Silence`、`Scope` |
 | `for_kind` | `NodeKind` → `Box<dyn Process>`；未实现 kind 返回 `None` |
 
 扩展类型 / 模块见伞仓 [doc/modules.md](https://github.com/KrvyFT/waver/blob/master/doc/modules.md)（Noise 为标准示范）。
