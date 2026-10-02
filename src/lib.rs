@@ -5,5 +5,5 @@
 mod nodes;
 mod process;
 
-pub use nodes::{Delay, Noise, Output, Silence, Vco, for_kind};
+pub use nodes::{Delay, Noise, Output, Scope, Silence, Vcf, Vco, for_kind};
 pub use process::{Process, ProcessCtx};
