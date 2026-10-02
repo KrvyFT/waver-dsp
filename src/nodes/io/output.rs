@@ -70,6 +70,11 @@ mod tests {
             outputs: &mut outputs,
         };
         output.process(&mut ctx);
-        assert!(output.master_slice().iter().all(|s| (*s - 0.25).abs() < f32::EPSILON));
+        assert!(
+            output
+                .master_slice()
+                .iter()
+                .all(|s| (*s - 0.25).abs() < f32::EPSILON)
+        );
     }
 }
