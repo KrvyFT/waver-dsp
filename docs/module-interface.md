@@ -25,11 +25,11 @@
 | Family | 分类 | 已实现模块 |
 |---|---|---|
 | `Oscillator` | 振荡器 | `Vco`、`Noise` |
-| `Filter` | 滤波器 | 无，`Vcf` 为计划项 |
+| `Filter` | 滤波器 | `Vcf`（二阶 TPT 低通） |
 | `AmpEnv` | 放大 / 包络 | 无，`Vca`、`Adsr` 为计划项 |
 | `Modulation` | 调制 | 无，`Lfo` 为计划项 |
 | `Mixer` | 混音 | 无，`Mixer` 为计划项 |
-| `Utility` | 工具 | `Delay`、`Silence` |
+| `Utility` | 工具 | `Delay`、`Silence`、`Scope`（示波器，1 输入 / 0 输出） |
 | `Io` | 输入 / 输出 | `Output` |
 
 `ModuleDesc` 位于 `waver-core/src/module.rs`：
@@ -39,6 +39,7 @@
 - `name`、`code`：模块库文案及搜索字段。
 - `canvas_label`、`summary`、`inspector_blurb`：画布和检查器文案。
 - `addable`：模块库是否允许添加。它**不阻止**调用方直接 `Graph::insert`。
+- `monitors`：为 `true` 时宿主为该节点在 `ParamRegistry` 里创建并复用一块监视缓冲（audio → GUI，见 3.5）。
 - `param_defaults`、`param_labels`：顺序对应 `ParamId`；两者长度必须等于 `ports.params`。
 
 `NodeKind::desc()` 通过手写下标访问 `MODULE_CATALOG`。插入、重排目录时必须同步映射；已有测试检查唯一性、覆盖、端口和参数数量。
@@ -70,6 +71,18 @@ pub trait Process: Send {
 当前引擎会为每个输入口准备缓冲：未连接输入为零，多条连线进入同一输入时逐样本求和；不会自动限幅。`inputs.is_empty()` 表示没有输入总线，并不表示一个有输入端口的模块处于未连接状态。
 
 当前宿主上限是 **4 个输入、1 个输出、每次最多 64 帧**。`ProcessCtx` 的切片形状允许更多总线，但 Engine 暂时只向处理器提供并回写输出口 0。声明多输出、超过 4 个输入的模块之前必须扩展宿主路由。`Engine::process_block` 的直接调用方还须确保交错缓冲长度可被设备声道数整除；cpal 路径负责按块切分。
+
+### 监视缓冲（monitor tap）
+
+`ModuleDesc.monitors` 为 `true` 的节点会拿到一块 `Arc<ScopeTap>`（`waver-core/src/tap.rs`），用于把音频线程的样本搬到 GUI：
+
+- 工厂用 `ParamRegistry::tap(node)` 取缓冲；`for_kind` 对 `Scope` 就是这么绑定的。
+- DSP 侧只在 `process` 内 `push` 样本：单写者、无锁、无分配；写前把非有限值替换为有限值。
+- GUI 侧用 `snapshot(&mut out)` 拷贝最近的一段；容量为 `SCOPE_CAPACITY`（1024），返回**最新**的样本，最旧在前。
+- 监视节点照常参与调度，但通常 0 输出：`Scope` 声明 1 输入 / 0 输出，引擎不会为它回写任何输出缓冲。
+- `ParamRegistry::merge` 重编译时按 `NodeId` 复用同一块 `ScopeTap`，所以显示历史（而非处理器状态）能跨重编译保留。
+
+监视缓冲不是音频通路，只用于显示：不做重采样，也不保证一次快照恰好对应某次 `process_block`。
 
 ### 状态与参数
 
@@ -174,7 +187,7 @@ cell.set(0.0); // 下一块读取新参数，无需重建节点。
 1. Core：添加 `NodeKind` 变体，选择 `ModuleFamily`。
 2. Core：写 `ModuleDesc`，确保端口、默认参数、标签长度和真实算法一致，更新 `NodeKind::desc()` 下标。
 3. DSP：在 `src/nodes/<family>/` 实现 `Process`，在该目录及 `nodes/mod.rs` 导出。
-4. DSP：在 `for_kind` 绑定必需的参数单元、构造处理器；新增公开类型时在 `lib.rs` 导出。
+4. DSP：在 `for_kind` 绑定必需的参数单元、构造处理器；新增公开类型时在 `lib.rs` 导出。只读显示模块把 `monitors` 设为 `true`，用 `ParamRegistry::tap(node)` 取监视缓冲，输出口声明为 0。
 5. UI：0..=1 参数可使用通用检查器；其他范围/枚举需要专用控件或元数据扩展。确认节点尺寸足够容纳所有端口。
 6. 验证完整链路后将 `addable` 设为 true；目录可添加状态应与工厂可实例化状态一致。
 7. 在伞仓运行测试、Clippy、rustdoc；分别提交子仓库，再更新伞仓 submodule 指针。
@@ -188,6 +201,7 @@ Noise 的 `with_params` 使用固定默认种子，适合可重复测试；`with
 - DSP：已知输入输出、零参数、连续块、短块、有效范围和输出尾部不被改写。
 - 参数：持有的 `Arc<ParamCell>` 更新后，下一块生效，不串改其他实例。
 - 集成：新模块 → Output 能输出，检查器数值区域在窄窗口内可见。
+- 监视：`monitors: true` 的节点在重编译后仍复用同一块缓冲，快照只读、不参与音频路由。
 
 ```sh
 cargo test --workspace
