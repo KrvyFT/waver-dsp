@@ -1,12 +1,14 @@
 //! Built-in nodes, grouped by [`waver_core::ModuleFamily`].
 
+mod filter;
 mod io;
 mod oscillator;
 mod utility;
 
+pub use filter::Vcf;
 pub use io::{MAX_BLOCK, Output};
 pub use oscillator::{Noise, Vco};
-pub use utility::{Delay, Silence};
+pub use utility::{Delay, Scope, Silence};
 
 use waver_core::{NodeId, NodeKind, ParamId, ParamRegistry};
 
@@ -31,7 +33,16 @@ pub fn for_kind(kind: NodeKind, node: NodeId, params: &ParamRegistry) -> Option<
         }
         NodeKind::Output => Some(Box::new(Output::new())),
         NodeKind::Delay => Some(Box::new(Delay::new())),
-        NodeKind::Vcf | NodeKind::Vca | NodeKind::Adsr | NodeKind::Lfo | NodeKind::Mixer => None,
+        NodeKind::Vcf => {
+            let cutoff = params.get(node, ParamId::new(0))?;
+            let resonance = params.get(node, ParamId::new(1))?;
+            Some(Box::new(Vcf::with_params(cutoff, resonance)))
+        }
+        NodeKind::Scope => {
+            let tap = params.tap(node)?;
+            Some(Box::new(Scope::new(tap)))
+        }
+        NodeKind::Vca | NodeKind::Adsr | NodeKind::Lfo | NodeKind::Mixer => None,
     }
 }
 
@@ -45,6 +56,8 @@ mod tests {
         let mut graph = Graph::new();
         let vco = graph.insert(NodeKind::Vco);
         let noise = graph.insert(NodeKind::Noise);
+        let vcf = graph.insert(NodeKind::Vcf);
+        let scope = graph.insert(NodeKind::Scope);
         let out = graph.insert(NodeKind::Output);
         let schedule = graph.compile().expect("compile");
         let params = ParamRegistry::with_defaults(&schedule);
@@ -52,9 +65,10 @@ mod tests {
         assert!(for_kind(NodeKind::Silence, vco, &params).is_some());
         assert!(for_kind(NodeKind::Vco, vco, &params).is_some());
         assert!(for_kind(NodeKind::Noise, noise, &params).is_some());
+        assert!(for_kind(NodeKind::Vcf, vcf, &params).is_some());
+        assert!(for_kind(NodeKind::Scope, scope, &params).is_some());
         assert!(for_kind(NodeKind::Output, out, &params).is_some());
         assert!(for_kind(NodeKind::Delay, out, &params).is_some());
-        assert!(for_kind(NodeKind::Vcf, vco, &params).is_none());
     }
 }
 
@@ -121,9 +135,39 @@ mod contract_tests {
     }
 
     #[test]
+    fn scope_factory_binds_the_registry_tap() {
+        let mut graph = Graph::new();
+        let scope = graph.insert(NodeKind::Scope);
+        let params = ParamRegistry::with_defaults(&graph.compile().unwrap());
+        let mut processor = for_kind(NodeKind::Scope, scope, &params).expect("scope");
+
+        let signal: Vec<f32> = (0..64).map(|step| step as f32 * 0.01).collect();
+        let mut outputs: [&mut [f32]; 0] = [];
+        processor.process(&mut ProcessCtx {
+            sample_rate: 48_000.0,
+            block: 64,
+            inputs: &[&signal],
+            outputs: &mut outputs,
+        });
+
+        let tap = params.tap(scope).expect("tap");
+        let mut captured = [f32::NAN; 4];
+        assert_eq!(tap.snapshot(&mut captured), 4);
+        for (index, sample) in captured.iter().enumerate() {
+            let expected = (60 + index) as f32 * 0.01;
+            assert!((sample - expected).abs() < 1e-6, "{sample} != {expected}");
+        }
+    }
+
+    #[test]
     fn parameterized_factories_reject_missing_cells() {
         let empty = ParamRegistry::new();
-        for kind in [NodeKind::Noise, NodeKind::Vco] {
+        for kind in [
+            NodeKind::Noise,
+            NodeKind::Vco,
+            NodeKind::Vcf,
+            NodeKind::Scope,
+        ] {
             assert!(for_kind(kind, waver_core::NodeId::new(0), &empty).is_none());
         }
     }
