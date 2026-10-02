@@ -2,4 +2,4 @@
 
 mod output;
 
-pub use output::{Output, MAX_BLOCK};
+pub use output::{MAX_BLOCK, Output};
